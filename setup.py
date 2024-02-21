@@ -10,6 +10,7 @@ setup(
         "matplotlib",
         "seaborn",
         "scipy",
+        "statsmodels",
         "scikit-learn",
         "xgboost",
         "scikit-optimize",
