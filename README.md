@@ -14,4 +14,4 @@ following code
 ```bash
 python test_install.py
 ```
-You should see `Successfully installed major packages!` printed in tour terminal.
+You should see `Successfully installed major packages!` printed in your terminal.
