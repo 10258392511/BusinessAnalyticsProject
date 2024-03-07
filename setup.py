@@ -14,7 +14,10 @@ setup(
         "scikit-learn",
         "xgboost",
         "scikit-optimize",
+        "ipykernel",
         "ipywidgets",
+        "pyarrow",
+        "PyYAML",
         "tqdm"
     ]
 )
