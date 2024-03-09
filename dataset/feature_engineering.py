@@ -17,6 +17,21 @@ from BusinessAnalyticsProject.configs import load_global_config
 GlOBAL_CONFIG = load_global_config()
 
 
+def get_holiday_df():
+    """
+    holiday | 2010, 2011, 2012, 2013
+    """
+    all_df = []
+    for holiday_iter in GlOBAL_CONFIG["holiday_category"]:
+        df_iter = pd.DataFrame(GlOBAL_CONFIG[holiday_iter], index=[holiday_iter])
+        all_df.append(df_iter)
+
+    all_df = pd.concat(all_df)
+    all_df.rename(columns={col: int(col) for col in all_df.columns}, inplace=True)
+
+    return all_df
+
+
 def __contruct_features(features_df: pd.DataFrame):
     features_df["Temperature"] = (features_df["Temperature"] - 32) * 5 / 9  # Farenheit to Celsius
     features_df["Weight"] = features_df["IsHoliday"].apply(lambda val: GlOBAL_CONFIG["holiday_weight"] if val else 1)
@@ -24,6 +39,13 @@ def __contruct_features(features_df: pd.DataFrame):
     features_df["MarkDownMean"] = np.nanmean(markdown_cols.values, axis=1)
     features_df["MarkDownStd"] = np.nanstd(markdown_cols.values, axis=1)
 
+    holiday_df = get_holiday_df()
+    year = features_df["Date"].dt.isocalendar().year
+    week = features_df["Date"].dt.isocalendar().week
+
+    for holiday_iter in GlOBAL_CONFIG["holiday_category"]:
+        holiday_week = holiday_df.loc[holiday_iter, year.values]  # (N_train,)
+        features_df[f"Is_{holiday_iter}"] = (week.values == holiday_week.dt.isocalendar().week.values)
 
     return features_df
 
@@ -44,6 +66,9 @@ def join_tables(train_or_test_path: str, features_path: str, stores_path: str, s
 
     if save_path is not None:
         assert ".csv" in save_path
+        dirname = os.path.dirname(save_path)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
         out_table.to_csv(save_path)
 
     return out_table
@@ -59,6 +84,8 @@ def select_features(features_df: pd.DataFrame, if_train=True):
 def train_val_split():
     """
     - Fill missing values.
+        + MarkDown*: 0
+        + CPI and Unemployment: mean
     - Split: Use 2012 data for testing
 
     Returns
