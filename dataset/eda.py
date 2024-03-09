@@ -18,7 +18,7 @@ def count_missing_values(df: pd.DataFrame, **kwargs):
     sns.heatmap(df.isna(), cbar=False, ax=axes[0])
     axes[0].set_xlabel("Feature name")
     axes[0].set_yticklabels([])
-    axes[0].set_ylabel("Obs no.,\nsorted by (Store, Dept, Date)")
+    axes[0].set_ylabel("Obs no.,\nsorted by (Date, Store, Dept)")
     axes[0].set_title("Missing values are indicated by 1")
 
     sns.barplot(missing_vals_ratio, ax=axes[1])

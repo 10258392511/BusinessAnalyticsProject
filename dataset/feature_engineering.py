@@ -76,20 +76,68 @@ def join_tables(train_or_test_path: str, features_path: str, stores_path: str, s
 
 def select_features(features_df: pd.DataFrame, if_train=True):
     """
-    Select columns used for features and labels (if_train == True)
-    """
-    pass
-
-
-def train_val_split():
-    """
     - Fill missing values.
-        + MarkDown*: 0
+        + MarkDown*: 0 (including mean and std)
         + CPI and Unemployment: mean
-    - Split: Use 2012 data for testing
+    - Select columns used for features and labels (if_train == True)
+
+    Parameters
+    ----------
+    features_df: pd.DataFrame
+        "data/processed/all_train.csv" or "data/processed/all_test.csv"
 
     Returns
     -------
-    X_train, y_train, X_val, y_val
+    training: out_df, labels
+    testing: out_df, weights
     """
-    pass
+    markdown_cols = features_df.columns[features_df.columns.str.contains("MarkDown")]
+    features_df[markdown_cols] = features_df[markdown_cols].fillna(0.)
+    other_missing_val_cols = ["CPI", "Unemployment"]
+    features_df[other_missing_val_cols] = features_df[other_missing_val_cols].fillna(
+        features_df[other_missing_val_cols].mean()
+    )
+
+    labels = None
+    cols_drop = ["Store", "Date"]
+    if if_train:
+        labels = features_df["Weekly_Sales"]
+        cols_drop.append("Weekly_Sales")
+    out_df = features_df.drop(columns=cols_drop)
+
+    if not if_train:
+        weights = features_df["Weight"]
+        out_df = out_df.drop(columns=["Weight"])
+
+        return out_df, weights
+
+    return out_df, labels
+
+
+def train_test_split(all_train_df: pd.DataFrame):
+    """
+    Split: Use 2012 data for testing
+
+    Parameters
+    ----------
+    all_train_df: pd.DataFrame
+        Without feature selection. This is "data/processed/all_train.csv".
+
+    Returns
+    -------
+    X_train, y_train, weights_train, X_test, y_test, weights_test
+    """
+    all_train_df["Date"] = pd.to_datetime(all_train_df["Date"])
+    train_mask = all_train_df["Date"] <= pd.to_datetime("20120101")
+    all_train_df, all_labels = select_features(all_train_df, True)
+    X_train = all_train_df[train_mask]
+    y_train = all_labels[train_mask]
+    weights_train = X_train["Weight"]
+    X_train = X_train.drop(columns=["Weight"])
+
+    X_test = all_train_df[~train_mask]
+    y_test = all_labels[~train_mask]
+    weights_test = X_test["Weight"]
+    X_test = X_test.drop(columns=["Weight"])
+
+    return X_train, y_train, weights_train, X_test, y_test, weights_test
