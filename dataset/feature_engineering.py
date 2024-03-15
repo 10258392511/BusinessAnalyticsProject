@@ -114,9 +114,31 @@ def select_features(features_df: pd.DataFrame, if_train=True):
     return out_df, labels
 
 
+def combine_holiday_cols(df_in: pd.DataFrame):
+    """
+    Combine IsHoliday and Is_{holiday_name} into one categorical column.
+    """
+    df = df_in.copy()
+    holiday_enc_dict = GlOBAL_CONFIG["holiday_category"]
+    df["Holiday_type"] = 0
+    for colname, code in holiday_enc_dict.items():
+        code = int(code)
+        if code == 0:
+            continue
+        colname = f"Is_{colname}"
+        mask = df[colname]
+        df.loc[mask, "Holiday_type"] = code
+
+    df.drop(columns=df.columns[df.columns.str.contains("Is")], inplace=True)
+
+    return df
+
+
 def train_test_split(all_train_df: pd.DataFrame):
     """
-    Split: Use 2012 data for testing
+    - Split: Use 2012 data for testing
+    - Features are selected here.
+    - Combine holiday columns into one categorical column.
 
     Parameters
     ----------
@@ -127,6 +149,7 @@ def train_test_split(all_train_df: pd.DataFrame):
     -------
     X_train, y_train, weights_train, X_test, y_test, weights_test
     """
+    cate_cols = ["Dept", "Type", "Holiday_type"]
     all_train_df["Date"] = pd.to_datetime(all_train_df["Date"])
     train_mask = all_train_df["Date"] <= pd.to_datetime("20120101")
     all_train_df, all_labels = select_features(all_train_df, True)
@@ -134,10 +157,14 @@ def train_test_split(all_train_df: pd.DataFrame):
     y_train = all_labels[train_mask]
     weights_train = X_train["Weight"]
     X_train = X_train.drop(columns=["Weight"])
+    X_train = combine_holiday_cols(X_train)
+    X_train[cate_cols] = X_train[cate_cols].astype("category")
 
     X_test = all_train_df[~train_mask]
     y_test = all_labels[~train_mask]
     weights_test = X_test["Weight"]
     X_test = X_test.drop(columns=["Weight"])
+    X_test = combine_holiday_cols(X_test)
+    X_test[cate_cols] = X_test[cate_cols].astype("category")
 
     return X_train, y_train, weights_train, X_test, y_test, weights_test
