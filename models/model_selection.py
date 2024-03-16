@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import statsmodels.api as sm
 import sys
 import os
 import pickle
@@ -26,8 +27,7 @@ if PATH not in sys.path:
     sys.path.append(PATH)
 
 
-from BusinessAnalyticsProject.configs import add_prefix_to_feature_names
-from BusinessAnalyticsProject.configs import load_global_config
+from BusinessAnalyticsProject.configs import load_global_config, add_prefix_to_feature_names
 
 GlOBAL_CONFIG = load_global_config()
 
@@ -76,7 +76,7 @@ def create_pipeline(model_cls, param_dict, if_winsorization=False, if_data_norma
     if if_to_one_hot:
         cate_cols_steps.append(("one_hot", OneHotEncoder()))
     else:
-        cate_cols_selector.append(("dummy", FunctionTransformer(identity, feature_names_out="one-to-one")))
+        cate_cols_steps.append(("dummy", FunctionTransformer(identity, feature_names_out="one-to-one")))
     pipeline_cate = Pipeline(cate_cols_steps)
 
     cont_cols_steps = []
@@ -152,3 +152,23 @@ def metrics(pipeline: Pipeline, X: pd.DataFrame, y: pd.Series, weights: pd.Serie
     out_dict["rwmse"] = (weights @ (y - y_pred) ** 2).mean() ** 0.5
 
     return out_dict
+
+
+def benchmark(
+        pipeline_data: Union[Pipeline, None],
+        X_train: pd.DataFrame, y_train: pd.Series, weights_train: pd.Series,
+        X_test: pd.DataFrame, y_test: pd.Series, weights_test: pd.Series
+):
+    if pipeline_data is not None:
+        X_train = pipeline_data.fit_transform(X_train)
+        X_test = pipeline_data.transform(X_test)
+        X_train = pd.DataFrame(X_train.toarray(), columns=pipeline_data.get_feature_names_out(), index=y_train.index)
+        X_test = pd.DataFrame(X_test.toarray(), columns=pipeline_data.get_feature_names_out(), index=y_test.index)
+
+    X_train = sm.add_constant(X_train)
+    X_test = sm.add_constant(X_test)
+    model = sm.WLS(y_train, X_train, weights=weights_train ** 2)  # Input W -> Pre-multiply by sqrt(W)
+    results = model.fit()
+    metrics_val = metrics(results, X_test, y_test, weights_test)
+
+    return results, metrics_val

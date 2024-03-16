@@ -31,10 +31,10 @@ holiday_category:  # not_holiday: 0
 holiday_weight: 5  # from Kaggle
 
 cv_params:
-  n_iter: 10  # 50
+  n_iter: 20  # 50
   scoring: null
   n_jobs: 5
-  cv: 3
+  cv: 5
   refit: true
   verbose: 3
   random_state: 10
