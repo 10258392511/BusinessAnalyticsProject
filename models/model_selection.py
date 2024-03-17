@@ -169,6 +169,7 @@ def benchmark(
     X_test = sm.add_constant(X_test)
     model = sm.WLS(y_train, X_train, weights=weights_train ** 2)  # Input W -> Pre-multiply by sqrt(W)
     results = model.fit()
+    # results = model.fit_regularized()  # No .summary()
     metrics_val = metrics(results, X_test, y_test, weights_test)
 
     return results, metrics_val
