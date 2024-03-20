@@ -15,6 +15,7 @@ from skopt import BayesSearchCV
 from sklearn.metrics import r2_score, root_mean_squared_error
 from typing import List, Union
 from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
 from regressors import stats
 
 
@@ -210,13 +211,48 @@ def RR(
 
     X_train = sm.add_constant(X_train)
     X_test = sm.add_constant(X_test)
-    model = Ridge()
+    model = Ridge(alpha = 0.5, tol = 1e-5)
     results = model.fit(X_train, y_train)
     metrics_val = metrics(results, X_test, y_test, weights_test)
     
-    pval = stats.coef_pval(results, X_train, y_train)
-    summary = stats.summary(results, X_train, y_train)
+    y_pred = results.predict(X_test)
+    r2 = r2_score(y_test,y_pred)
+    #rss = sum((y_pred - y_test)**2)
+    #ret = [rss]
+    #ret.extend([results.intercept_])
+    #ret.extend(results.coef_)
+    # y_pred = Ridge.predict(X_test)
+    # rss = sum((y_pred-y_test)**2)
+    # ret = [rss]
+    # ret.extend([Ridge.intercept_])
+    # ret.extend(Ridge.coef_)
+               
     
-    return results, metrics_val,pval, summary
+    # pval = stats.coef_pval(results, X_train, y_train)
+    # summary = stats.summary(results, X_train, y_train)
+    # r2 = results.score(X_test, y_test)
+    
+    return results, metrics_val, r2
+
+def LSO(
+    pipeline_data: Union[Pipeline, None],
+        X_train: pd.DataFrame, y_train: pd.Series, weights_train: pd.Series,
+        X_test: pd.DataFrame, y_test: pd.Series, weights_test: pd.Series
+):
+    if pipeline_data is not None:
+        X_train = pipeline_data.fit_transform(X_train)
+        X_test = pipeline_data.transform(X_test)
+        X_train = pd.DataFrame(X_train.toarray(), columns=pipeline_data.get_feature_names_out(), index=y_train.index)
+        X_test = pd.DataFrame(X_test.toarray(), columns=pipeline_data.get_feature_names_out(), index=y_test.index)
+
+    X_train = sm.add_constant(X_train)
+    X_test = sm.add_constant(X_test)
+    model = Lasso(alpha = 1e-10, tol = 1)
+    results = model.fit(X_train, y_train)
+    metrics_val = metrics(results, X_test, y_test, weights_test)
+
+    r2 = results.score(X_test, y_test)
+    
+    return results, metrics_val, r2
     
 
