@@ -9,6 +9,8 @@ setup(
         "pandas",
         "matplotlib",
         "seaborn",
+        "plotly",
+        "nbformat",
         "scipy",
         "statsmodels",
         "scikit-learn",
