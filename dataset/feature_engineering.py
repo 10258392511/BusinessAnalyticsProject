@@ -134,6 +134,14 @@ def combine_holiday_cols(df_in: pd.DataFrame):
     return df
 
 
+def encode_type_col(df_in: pd.DataFrame):
+    df = df_in.copy()
+    type_enc_dict = GlOBAL_CONFIG["type_category"]
+    df["Type"] = df["Type"].apply(lambda val: type_enc_dict[val])
+
+    return df
+
+
 def train_test_split(all_train_df: pd.DataFrame):
     """
     - Split: Use 2012 data for testing
@@ -158,6 +166,7 @@ def train_test_split(all_train_df: pd.DataFrame):
     weights_train = X_train["Weight"]
     X_train = X_train.drop(columns=["Weight"])
     X_train = combine_holiday_cols(X_train)
+    X_train = encode_type_col(X_train)
     X_train[cate_cols] = X_train[cate_cols].astype("category")
 
     X_test = all_train_df[~train_mask]
@@ -165,6 +174,7 @@ def train_test_split(all_train_df: pd.DataFrame):
     weights_test = X_test["Weight"]
     X_test = X_test.drop(columns=["Weight"])
     X_test = combine_holiday_cols(X_test)
+    X_test = encode_type_col(X_test)
     X_test[cate_cols] = X_test[cate_cols].astype("category")
 
     return X_train, y_train, weights_train, X_test, y_test, weights_test

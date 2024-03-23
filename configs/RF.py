@@ -6,8 +6,11 @@ from sklearn.ensemble import RandomForestRegressor
 CONFIG = {
     "model_cls": RandomForestRegressor,
     "params": {
-        "n_estimators": 100,
-        "max_depth": 5,
+        "n_estimators": 75,
+        "max_depth": None,
+        "max_features": None,
+        "min_samples_leaf": 10,
+        "min_samples_split": 10,
         "verbose": 1,
         "n_jobs": 5
     },

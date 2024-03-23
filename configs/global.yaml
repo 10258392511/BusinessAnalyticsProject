@@ -28,6 +28,11 @@ holiday_category:  # not_holiday: 0
   thanks_giving: 3
   chrismas: 4
 
+type_category:
+    A: 0
+    B: 1
+    C: 2
+
 holiday_weight: 5  # from Kaggle
 
 cv_params:

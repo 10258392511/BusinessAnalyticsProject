@@ -11,8 +11,9 @@ from scipy.stats.mstats import winsorize
 from sklearn.pipeline import Pipeline
 from sklearn.compose import make_column_selector, ColumnTransformer
 from sklearn.preprocessing import StandardScaler, FunctionTransformer, OneHotEncoder
+from category_encoders import CatBoostEncoder
 from skopt import BayesSearchCV
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error
 from typing import List, Union
 
 
@@ -48,8 +49,12 @@ def winsorization(df: pd.DataFrame, quantile_cut=0.02, if_plot=False):
     return df_out
 
 
+def to_dense(X):
+    return X.toarray()
+
+
 def create_pipeline(model_cls, param_dict, if_winsorization=False, if_data_normalization=False,
-                    if_to_one_hot=False) -> Pipeline:
+                    if_to_one_hot=False, if_cate_enc=False, cate_cols=None, if_to_dense=False) -> Pipeline:
     """
     Parameters
     ----------
@@ -75,7 +80,9 @@ def create_pipeline(model_cls, param_dict, if_winsorization=False, if_data_norma
     cate_cols_steps = []
     if if_to_one_hot:
         cate_cols_steps.append(("one_hot", OneHotEncoder()))
-    else:
+    if if_cate_enc:
+        cate_cols_steps.append(("catboost_enc", CatBoostEncoder(cate_cols)))
+    if len(cate_cols_steps) == 0:
         cate_cols_steps.append(("dummy", FunctionTransformer(identity, feature_names_out="one-to-one")))
     pipeline_cate = Pipeline(cate_cols_steps)
 
@@ -99,10 +106,17 @@ def create_pipeline(model_cls, param_dict, if_winsorization=False, if_data_norma
         return col_transformer
 
     model = model_cls(**param_dict)
-    pipeline_out = Pipeline([
-        ("data_preprocessing", col_transformer),
-        ("model", model)
-    ])
+    if not if_to_dense:
+        pipeline_out = Pipeline([
+            ("data_preprocessing", col_transformer),
+            ("model", model)
+        ])
+    else:
+        pipeline_out = Pipeline([
+            ("data_preprocessing", col_transformer),
+            ("to_dense", FunctionTransformer(to_dense, feature_names_out="one-to-one")),
+            ("model", model)
+        ])
 
     return pipeline_out
 
@@ -147,7 +161,7 @@ def metrics(pipeline: Pipeline, X: pd.DataFrame, y: pd.Series, weights: pd.Serie
     y_pred = pipeline.predict(X)
     out_dict = {
         "r2_score": r2_score(y, y_pred),
-        "rmse": root_mean_squared_error(y, y_pred),
+        "rmse": mean_squared_error(y, y_pred) ** 0.5,
     }
     out_dict["rwmse"] = (weights @ (y - y_pred) ** 2).mean() ** 0.5
 
