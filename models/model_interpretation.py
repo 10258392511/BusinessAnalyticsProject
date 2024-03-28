@@ -4,11 +4,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import eli5
 import os
+import glob
 import pickle
 
 from statsmodels.regression.linear_model import RegressionResults
 from sklearn.pipeline import Pipeline
 from eli5.sklearn import PermutationImportance
+from eli5.permutation_importance import get_score_importances
+from sklearn.metrics import r2_score
+from typing import List, Iterable
 
 
 def create_benchmark_plot(results: RegressionResults, conf_level=0.05, **kwargs):
@@ -71,3 +75,102 @@ def show_weights_permutation_importance(model, X: pd.DataFrame, y: pd.DataFrame,
         exp_df.to_csv(os.path.join(save_dir, "perm_model.csv"))
 
     return fig, axis
+
+
+def show_weights_permutation_importance_non_sklearn(model, X: pd.DataFrame, y: pd.DataFrame, save_dir=None, **kwargs):
+    """
+    "model" should be fitted.
+    """
+    figsize = kwargs.get("figsize", (18, 6))
+    def score(X_in, y_in):
+        X_in = pd.DataFrame(X_in, index=X.index, columns=X.columns)
+        y_pred = model.predict(X_in)
+
+        return r2_score(y, y_pred)
+
+    base_score, score_decreases = get_score_importances(score, X.values, y.values)
+    exp_df = _create_permutation_importance_df(score_decreases, X.columns)
+
+    fig, axis = plt.subplots(figsize=figsize)
+    exp_df.sort_values("weight", ascending=False).plot(x="feature", y="weight", kind="bar", yerr="std", ax=axis)
+
+    if save_dir is not None:
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+        exp_df.to_csv(os.path.join(save_dir, "perm_model.csv"))
+
+    return fig, axis
+
+
+def _create_permutation_importance_df(
+        score_decreases: List[np.ndarray],
+        col_names: Iterable
+):
+    score_decreases_df = pd.DataFrame(score_decreases, columns=col_names)
+    exp_df = pd.DataFrame(index=col_names)
+    exp_df["weight"] = score_decreases_df.mean()
+    exp_df["std"] = score_decreases_df.std()
+    exp_df.index.name = "feature"
+    exp_df.reset_index(inplace=True)
+
+    return exp_df
+
+
+def show_prediction_best_worst(
+        pipeline: Pipeline,
+        X: pd.DataFrame,
+        y: pd.DataFrame,
+        num_samples=5,
+        save_dir=None
+):
+    pass
+
+
+def show_prediction_time_series(
+        pipeline: Pipeline,
+        X: pd.DataFrame,
+        y: pd.DataFrame,
+        date_time=None,
+        save_dir=None
+):
+    y_pred = pipeline.predict(X)
+    pass
+
+
+def show_permutation_importance_corr(
+        results_dir: str,
+        **kwargs
+):
+    figsize = kwargs.get("figsize", (6, 6))
+    filenames = glob.glob(os.path.join(results_dir, "*/perm_model.csv"))
+    perm_all_df = None
+    for filename in filenames:
+        model_name = os.path.basename(os.path.dirname(filename))
+        perm_df = pd.read_csv(filename, index_col=[0]).set_index("feature")
+        # print(perm_df)
+        if perm_all_df is None:
+            perm_all_df = pd.DataFrame(index=perm_df.index)
+        perm_all_df[model_name] = perm_df["weight"]
+
+    corr_df = perm_all_df.corr(method="spearman")
+    fig, axis = plt.subplots(figsize=figsize)
+    sns.heatmap(corr_df, ax=axis, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, square=True)
+    axis.set_title("Rank Correlation of Permutation Importance")
+
+    return fig, axis
+
+
+def show_metrics(
+        results_dir: str
+):
+    filenames = glob.glob(os.path.join(results_dir, "*/*.pkl"))
+    metrics_all = {}
+    for filename in filenames:
+        model_name = os.path.basename(os.path.dirname(filename))
+        with open(filename, "rb") as rf:
+            models_all = pickle.load(rf)
+        metrics_all[model_name] = models_all["metrics"]
+
+    metrics_df = pd.DataFrame(metrics_all).T  # (metric) | model1, ... -> (model) | metric1
+
+    return metrics_df.sort_values("r2_score", ascending=False)

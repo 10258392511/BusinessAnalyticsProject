@@ -20,6 +20,7 @@ setup(
         "category_encoders",
         "eli5",
         "scikit-optimize",
+        "regressors",
         "ipykernel",
         "ipywidgets",
         "pyarrow",
