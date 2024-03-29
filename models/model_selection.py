@@ -211,7 +211,7 @@ def RR(
 
     X_train = sm.add_constant(X_train)
     X_test = sm.add_constant(X_test)
-    model = Ridge(alpha = 0.5, tol = 1e-5)
+    model = Ridge(alpha = 1e-10)
     results = model.fit(X_train, y_train)
     metrics_val = metrics(results, X_test, y_test, weights_test)
     
@@ -247,7 +247,7 @@ def LSO(
 
     X_train = sm.add_constant(X_train)
     X_test = sm.add_constant(X_test)
-    model = Lasso(alpha = 1e-10, tol = 1)
+    model = Lasso(alpha = 1e-10, tol = 0.005)
     results = model.fit(X_train, y_train)
     metrics_val = metrics(results, X_test, y_test, weights_test)
 
