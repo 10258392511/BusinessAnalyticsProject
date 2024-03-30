@@ -142,7 +142,7 @@ def encode_type_col(df_in: pd.DataFrame):
     return df
 
 
-def train_test_split(all_train_df: pd.DataFrame):
+def train_test_split(all_train_df: pd.DataFrame, split_date="20120101", if_train=True):
     """
     - Split: Use 2012 data for testing
     - Features are selected here.
@@ -159,17 +159,22 @@ def train_test_split(all_train_df: pd.DataFrame):
     """
     cate_cols = ["Dept", "Type", "Holiday_type"]
     all_train_df["Date"] = pd.to_datetime(all_train_df["Date"])
-    train_mask = all_train_df["Date"] <= pd.to_datetime("20120101")
-    all_train_df, all_labels = select_features(all_train_df, True)
+    train_mask = all_train_df["Date"] <= pd.to_datetime(split_date)
+    all_train_df, all_labels = select_features(all_train_df, if_train)  # all_labels: labels or weights
     X_train = all_train_df[train_mask]
     y_train = all_labels[train_mask]
-    weights_train = X_train["Weight"]
-    X_train = X_train.drop(columns=["Weight"])
+    weights_train = None
+    if if_train:
+        weights_train = X_train["Weight"]
+        X_train = X_train.drop(columns=["Weight"])
     X_train = combine_holiday_cols(X_train)
     X_train = encode_type_col(X_train)
     X_train[cate_cols] = X_train[cate_cols].astype("category")
 
     X_test = all_train_df[~train_mask]
+    if X_test.shape[0] == 0:
+        return X_train, y_train, weights_train, None, None, None
+
     y_test = all_labels[~train_mask]
     weights_test = X_test["Weight"]
     X_test = X_test.drop(columns=["Weight"])
