@@ -28,6 +28,25 @@ def create_benchmark_plot(results: RegressionResults, conf_level=0.05, **kwargs)
 
     fig, axes = plt.subplots(2, 1, figsize=figsize)
     sig_features.plot(kind="bar", rot=90, ax=axes[0], title="Significant Features", ylabel="p-value")
+    insig_features.plot(kind="bar", rot=90, ax=axes[1], title="Insignificant Features", ylabel="p-value")
+
+    fig.tight_layout()
+
+    return fig, axes
+
+def create_benchmark_plot_with_p(pval, results: RegressionResults, conf_level=0.05, **kwargs):
+    """
+    kwargs: figsize
+    """
+    figsize = kwargs.get("figsize", (18, 7.2))
+
+    p_vals = pd.Series(pval)
+    sig_mask = p_vals <= conf_level
+    sig_features = p_vals[sig_mask].sort_values()
+    insig_features = p_vals[~sig_mask].sort_values(ascending=False)
+
+    fig, axes = plt.subplots(2, 1, figsize=figsize)
+    sig_features.plot(kind="bar", rot=90, ax=axes[0], title="Significant Features", ylabel="p-value")
     insig_features.plot(kind="bar", rot=90, ax=axes[1], title="Inignificant Features", ylabel="p-value")
 
     fig.tight_layout()
